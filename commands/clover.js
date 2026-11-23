@@ -234,3 +234,43 @@ reg.add(['spells', 'magic'], 'AWAKENING', c => { const g = GRM.st(c.u); CL.of(c.
 reg.add(['spar'], 'GAMES', c => { c.args = c.args.slice(); return reg.get('duelwh').fn(c); }, 'Friendly card duel with no bet', { usage: 'spar @player' });
 reg.add(['bosses', 'bosslist'], 'QUEST', c => c.reply(box('👹', 'bosses', Object.keys(require('../lib/data').ZONES).filter(k => require('../lib/data').ZONES[k].boss).map(k => { const z = require('../lib/data').ZONES[k]; return z.e + ' ' + z.n + ' (lv ' + z.lvl + ') — *' + z.boss.n + '*'; }).concat(['', 'Travel: ' + n('map', c) + ' · Fight: ' + n('boss', c)]))), 'Every zone boss');
 reg.add(['battlecmds', 'battle'], 'QUEST', c => c.reply(box('⚔️', 'battle commands', [n('explore', c) + ' — hunt in your zone', n('boss', c) + ' — fight the zone boss (website arena)', n('duelwh', c) + ' @user [bet] — card duel in chat', n('duel', c) + ' @user — arena duel on the website', n('cast', c) + ' <spell> — cast a grimoire spell', n('spells', c) + ' — your spells', n('devilunion', c) + ' — devil power', n('rest', c) + ' — heal', n('train', c) + ' — train mana XP', n('mission', c) + ' — daily mission'])), 'All battle commands');
+
+// ---------- GRIMOIRE COMMANDS ----------
+reg.add('grimoire', 'MAGIC', c => {
+  const r = GRM.claim(c.u);
+  return c.reply(r.ok ? r.msg : '❌ ' + r.msg);
+}, 'Claim your permanent Grimoire affinity');
+
+reg.add('cast', 'MAGIC', c => {
+  const target = who(c) || c.u;
+
+  // Get the spell number/name, ignoring the player mention.
+  const spell = c.args.find(a => !/^@/.test(a));
+
+  if (!spell) {
+    return c.reply(
+      '📖 Use: .cast <spell number> [@player]\n' +
+      'Example: .cast 1\n' +
+      'Example: .cast 1 @player'
+    );
+  }
+
+  if (!target) return c.reply('❌ Player not found.');
+
+  if (target.id !== c.u.id) {
+    return c.reply('⚠️ Player targeting requires the Grimoire engine update. Self-casting is available for now.');
+  }
+
+  const result = GRM.cast(
+    c.u,
+    spell,
+    () => R.curHp(c.u),
+    () => R.stats(c.u).hp,
+    hp => { c.u.rpg.hp = hp; }
+  );
+
+  db.save();
+  return c.reply(result.msg);
+}, 'Cast a Grimoire spell', {
+  usage: 'cast <spell number> [@player]'
+});
